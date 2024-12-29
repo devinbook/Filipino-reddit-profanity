@@ -10,4 +10,16 @@ def detect_profanity(text):
     with torch.no_grad():
         outputs = model(**inputs)
         prediction = torch.argmax(outputs.logits, dim=-1).item()
-    return prediction == 1 
+    return prediction == 1
+
+def analyze_profanity(comments):
+    analyzed_comments = []
+    for comment in comments:
+        is_profane = detect_profanity(comment['text'])
+        profanity_status = "Profane" if is_profane else "Non-Profane"
+        analyzed_comments.append({
+            'user': comment['user'],
+            'text': comment['text'],
+            'profanity_status': profanity_status
+        })
+    return analyzed_comments
