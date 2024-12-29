@@ -3,117 +3,52 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Profanity Check Results</title>
-    <link
-      rel="stylesheet"
-      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/css/all.min.css"
-    />
     <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-      }
-      table,
-      th,
-      td {
-        border: 1px solid black;
-      }
-      th,
-      td {
-        padding: 10px;
-        text-align: center;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-      .action-buttons {
-        display: flex;
-        gap: 10px;
-      }
-    </style>
   </head>
-  <body style="background-color: #e5e5e5">
-    <nav class="p-5 bg-white shadow md:flex md:items-center md:justify-between">
-      <div class="flex justify-between items-center">
-        <div class="text-lg font-semibold">Profanity Detector</div>
-        <span class="text-3xl cursor-pointer mx-2 md:hidden block">
-          <ion-icon name="menu" onclick="Menu(this)"></ion-icon>
-        </span>
-      </div>
-      <ul
-        class="md:flex md:items-center z-[-1] md:z-auto md:static absolute bg-white w-full left-0 md:w-auto md:py-0 py-4 md:pl-0 pl-7 md:opacity-100 opacity-0 top-[-400px] transition-all ease-in duration-500"
-      >
-        <li class="mx-4 my-6 md:my-0">
-          <a href="/" class="text-xl hover:text-cyan-500 duration-500">Home</a>
-        </li>
-        <li class="mx-4 my-6 md:my-0">
-          <a
-            href="javascript:history.back()"
-            class="text-xl hover:text-cyan-500 duration-500"
-            >Output</a
-          >
-        </li>
-        <li class="mx-4 my-6 md:my-0">
-          <a href="#" class="text-xl hover:text-cyan-500 duration-500">About</a>
-        </li>
-        <li class="mx-4 my-6 md:my-0">
-          <a href="#" class="text-xl hover:text-cyan-500 duration-500"
-            >Contact</a
-          >
-        </li>
-      </ul>
+  <body class="bg-gray-100">
+    <nav class="p-5 bg-white shadow">
+      <div class="text-lg font-bold">Profanity Detector</div>
     </nav>
-
-    <main class="text-center mt-8 mx-auto" style="max-width: 800px">
-      <h1 class="text-3xl font-bold text-gray-800">Profanity Check Results</h1>
-      <table>
+    <div class="container mx-auto mt-8">
+      <h2 class="text-2xl font-bold text-center">Detection Results</h2>
+      <table class="mt-4 mx-auto border-collapse w-full">
         <thead>
-          <tr>
-            <th>Comment</th>
-            <th>Profane</th>
-            <th>Sentiment Analysis</th>
-            <th>Actions</th>
+          <tr class="border border-black">
+            <th class="border border-black px-4 py-2">Comment</th>
+            <th class="border border-black px-4 py-2">Severity</th>
+            <th class="border border-black px-4 py-2">User Name</th>
+            <th class="border border-black px-4 py-2">Action</th>
           </tr>
         </thead>
         <tbody>
-          {% for result in results %}
-          <tr>
-            <td>{{ result.comment }}</td>
-            <td>{{ result.profane }}</td>
-            <td></td>
-            <td>
+          {% for comment in comments %}
+          <tr class="{{ comment.row_color }} border border-black">
+            <td class="border border-black px-4 py-2">{{ comment.text }}</td>
+            <td class="border border-black px-4 py-2">
+              {{ comment.severity }}
+            </td>
+            <td class="border border-black px-4 py-2">{{ comment.user }}</td>
+            <td class="border border-black px-4 py-2">
               <div class="action-buttons">
                 <button
-                  class="px-3 py-1 bg-yellow-400 text-black rounded border border-black hover:bg-yellow-500"
-                  onclick="showAlert('warn', '{{ result.comment }}')"
-                >
-                  Warning
-                </button>
-
-                <button
                   class="px-3 py-1 bg-red-500 text-white rounded border border-black hover:bg-red-600"
-                  onclick="showAlert('report', '{{ result.comment }}')"
+                  onclick="showAlert('report', '{{ comment.text }}')"
                 >
                   Report
                 </button>
               </div>
-
-              <script>
-                function showAlert(action, comment) {
-                  let actionText = action === "warn" ? "warned" : "reported";
-                  alert(`The comment "${comment}" has been ${actionText}.`);
-                }
-              </script>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
-      <a href="/" class="mt-4 inline-block text-blue-500 hover:underline"
-        >Go back</a
-      >
-    </main>
+    </div>
+
+    <script>
+      function showAlert(action, comment) {
+        let actionText = action === "warn" ? "warned" : "reported";
+        alert(`The comment "${comment}" has been ${actionText}.`);
+      }
+    </script>
   </body>
 </html>
