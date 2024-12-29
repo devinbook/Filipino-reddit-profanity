@@ -1,25 +1,75 @@
 import torch
 from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
+import random
+import re
 
-model_path = r"C:\Users\Personal Computer\Desktop\Reddit-profanity-detection\Saved Models"
+# Load the fine-tuned model and tokenizer
+model_path = r"C:\Users\Personal Computer\Desktop\profanity-tagalogreddit\Saved_Models"
 tokenizer = DistilBertTokenizer.from_pretrained(model_path)
 model = DistilBertForSequenceClassification.from_pretrained(model_path)
 
-def detect_profanity(text):
+# Profane words list
+PROFANE_WORDS = [
+    "puta", "putangina", "kupal", "tangina", "pakyu", "tarantado",
+    "gago", "ulol", "tanga", "bobo", "punyeta", "pakshet",
+    "bwiset","bwisit", "pucha", "yawa","tang ina", "gagi"
+]
+
+# Masking logic based on severity
+def mask_word(word, severity):
+    if severity == "High":
+        return word[0] + "*" * (len(word) - 1)  # Keep first letter, mask the rest
+    elif severity == "Mild":
+        if len(word) > 1:
+            idx = random.randint(1, len(word) - 1)
+            return word[:idx] + "*" + word[idx + 1:]
+        return word
+    elif severity == "Moderate":
+        if len(word) > 2:
+            indices = random.sample(range(1, len(word)), k=2)
+            masked_word = list(word)
+            for idx in indices:
+                masked_word[idx] = "*"
+            return "".join(masked_word)
+        return word
+    return word
+
+# Mask profane words in a text
+def mask_profanity(text, severity):
+    words = text.split()
+    for i, word in enumerate(words):
+        # Detect profane substrings (case-insensitive)
+        if any(re.search(rf"{p}", word, re.IGNORECASE) for p in PROFANE_WORDS):
+            words[i] = mask_word(word, severity)
+    return " ".join(words)
+
+# Detect severity of profanity
+def detect_severity(text):
     inputs = tokenizer(text, return_tensors="pt", padding=True, truncation=True)
     with torch.no_grad():
         outputs = model(**inputs)
-        prediction = torch.argmax(outputs.logits, dim=-1).item()
-    return prediction == 1
+        logits = outputs.logits
+        prediction = torch.argmax(logits, dim=-1).item()
 
-def analyze_profanity(comments):
+    severity_mapping = {
+        0: "High",
+        1: "Mild",
+        2: "Moderate",
+        3: "Non-Profane"
+    }
+
+    return severity_mapping.get(prediction, "Unknown")
+
+# Analyze comments and apply masking
+def analyze_severity(comments):
     analyzed_comments = []
     for comment in comments:
-        is_profane = detect_profanity(comment['text'])
-        profanity_status = "Profane" if is_profane else "Non-Profane"
+        severity = detect_severity(comment['text'])
+        masked_text = mask_profanity(comment['text'], severity)
         analyzed_comments.append({
             'user': comment['user'],
-            'text': comment['text'],
-            'profanity_status': profanity_status
+            'text': masked_text,
+            'severity': severity
         })
     return analyzed_comments
+
