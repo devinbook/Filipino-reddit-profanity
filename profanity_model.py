@@ -1,12 +1,14 @@
 import torch
-from transformers import DistilBertTokenizer, DistilBertForSequenceClassification
 import random
 import re
 
+from transformers import BertTokenizer, BertForSequenceClassification
+
 # Load the fine-tuned model and tokenizer
-model_path = r"C:\Users\Personal Computer\Desktop\profanity-tagalogreddit\Saved_Models"
-tokenizer = DistilBertTokenizer.from_pretrained(model_path)
-model = DistilBertForSequenceClassification.from_pretrained(model_path)
+model_path = r"C:\Users\Personal Computer\Desktop\profanity-tagalogreddit\Bert_model"
+tokenizer = BertTokenizer.from_pretrained(model_path)
+model = BertForSequenceClassification.from_pretrained(model_path)
+
 
 # Profane words list
 PROFANE_WORDS = [
