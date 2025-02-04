@@ -1,12 +1,25 @@
 import re
 import praw
 
+# List of prohibited phrases to filter out
+PROHIBITED_PHRASES = [
+    "Giving out other people's personal and identifying information is STRICTLY PROHIBITED",
+    "violates reddit rules",
+    # Add any other prohibited phrases here
+]
+
 def preprocess_text(text):
     text = text.lower()
-    text = re.sub(r"@\w+", "", text)  
-    text = re.sub(r"[^a-zA-Z0-9\s]", "", text)  
-    text = re.sub(r"\s+", " ", text).strip()  
+    text = re.sub(r"@\w+", "", text)  # Remove mentions
+    text = re.sub(r"[^a-zA-Z0-9\s]", "", text)  # Remove special characters
+    text = re.sub(r"\s+", " ", text).strip()  # Normalize white spaces
     return text
+
+def contains_prohibited_phrase(text):
+    for phrase in PROHIBITED_PHRASES:
+        if phrase.lower() in text.lower():
+            return True
+    return False
 
 def fetch_reddit_comments(post_url):
     try:
@@ -24,11 +37,18 @@ def fetch_reddit_comments(post_url):
             "comments": []
         }
 
+        # Loop through comments, anonymize author and filter prohibited content
         for comment in submission.comments.list():
             if comment.author and comment.author.name != "AutoModerator":
                 cleaned_text = preprocess_text(comment.body)
+
+                # Skip comments with prohibited phrases
+                if contains_prohibited_phrase(cleaned_text):
+                    continue
+
                 post_data["comments"].append({
-                    "user": comment.author.name,
+                    # Do not include user data or anonymize it
+                    "user": "Anonymous",  # Replace with "Anonymous" or remove
                     "text": cleaned_text
                 })
 
