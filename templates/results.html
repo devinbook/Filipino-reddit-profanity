@@ -4,17 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   </head>
   <body class="bg-gray-100">
     <!-- Navigation Bar -->
     <nav class="p-5 bg-white shadow">
       <div class="flex items-center justify-between">
         <div class="text-lg font-bold">Profanity Detector</div>
-        <!-- Home Button -->
-        <ul
-          class="md:flex md:items-center z-[-1] md:z-auto md:static absolute bg-white w-full left-0 md:w-auto md:py-0 py-4 md:pl-0 pl-7 md:opacity-100 opacity-0 top-[-400px] transition-all ease-in duration-500"
-        >
-          <li class="mx-4 my-6 md:my-0">
+        <ul class="md:flex items-center">
+          <li class="mx-4">
             <a href="/" class="text-xl hover:text-cyan-500 duration-500"
               >Home</a
             >
@@ -23,17 +22,42 @@
       </div>
     </nav>
 
-    <!-- Post Details -->
-    <div class="container mx-auto mt-8 bg-white p-5 rounded-lg shadow-lg">
-      <h2 class="text-3xl font-bold">{{ post.title }}</h2>
-      <p class="text-gray-700 mt-2">{{ post.content }}</p>
-      <a href="{{ post.url }}" class="text-blue-500 mt-4 block"
-        >View on Reddit</a
+    <!-- Main Content Section -->
+    <div class="container mx-auto mt-8 flex gap-6">
+      <!-- Post Details -->
+      <div class="flex-1 bg-white p-5 rounded-lg shadow-lg">
+        <h2 class="text-3xl font-bold">{{ post.title }}</h2>
+        <p class="text-gray-700 mt-2">{{ post.content }}</p>
+        <a href="{{ post.url }}" class="text-blue-500 mt-4 block"
+          >View on Reddit</a
+        >
+      </div>
+
+      <!-- Profanity Graph Section -->
+      <div class="bg-white p-5 rounded-lg shadow-lg w-80">
+        <h2 class="text-lg font-bold mb-2">Profanity Severity</h2>
+        <div class="w-64 h-64">
+          <canvas id="profanityChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Severity Filter -->
+    <div class="container mx-auto mt-6 flex items-center">
+      <label for="severityFilter" class="mr-2 font-bold"
+        >Filter by Severity:</label
       >
+      <select id="severityFilter" class="p-2 border rounded">
+        <option value="All">All</option>
+        <option value="High">High</option>
+        <option value="Moderate">Moderate</option>
+        <option value="Mild">Mild</option>
+        <option value="Non-Profane">Non-Profane</option>
+      </select>
     </div>
 
     <!-- Comments Table -->
-    <div class="container mx-auto mt-8">
+    <div class="container mx-auto mt-6 overflow-x-auto">
       <h2 class="text-2xl font-bold text-center">Detection Results</h2>
       <table class="mt-4 mx-auto border-collapse w-full">
         <thead>
@@ -44,23 +68,24 @@
             <th class="border border-black px-4 py-2">Action</th>
           </tr>
         </thead>
-        <tbody>
+        <tbody id="commentsTable">
           {% for comment in comments %}
-          <tr class="{{ comment.row_color }} border border-black">
+          <tr
+            class="comment-row {{ comment.row_color }} border border-black"
+            data-severity="{{ comment.severity }}"
+          >
             <td class="border border-black px-4 py-2">{{ comment.text }}</td>
             <td class="border border-black px-4 py-2">
               {{ comment.severity }}
             </td>
             <td class="border border-black px-4 py-2">{{ comment.insight }}</td>
-            <td class="border border-black px-4 py-2">
-              <div class="action-buttons">
-                <button
-                  class="px-3 py-1 bg-red-500 text-white rounded border border-black hover:bg-red-600"
-                  onclick="showAlert('report', '{{ comment.text }}')"
-                >
-                  Report
-                </button>
-              </div>
+            <td class="border border-black px-4 py-2 text-center">
+              <button
+                class="report-btn bg-red-500 text-white px-2 py-1 rounded"
+                data-comment="{{ comment.text }}"
+              >
+                Report
+              </button>
             </td>
           </tr>
           {% endfor %}
@@ -68,11 +93,101 @@
       </table>
     </div>
 
+    <!-- Include the Data Labels Plugin -->
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+
     <script>
-      function showAlert(action, comment) {
-        let actionText = action === "warn" ? "warned" : "reported";
-        alert(`The comment "${comment}" has been ${actionText}.`);
-      }
+      document.addEventListener("DOMContentLoaded", function () {
+        let severityCounts = {
+          High: 0,
+          Moderate: 0,
+          Mild: 0,
+          "Non-Profane": 0,
+        };
+
+        document.querySelectorAll(".comment-row").forEach((row) => {
+          let severity = row.getAttribute("data-severity");
+          if (severityCounts.hasOwnProperty(severity)) {
+            severityCounts[severity]++;
+          }
+        });
+
+        let totalComments = Object.values(severityCounts).reduce(
+          (a, b) => a + b,
+          0
+        );
+
+        let ctx = document.getElementById("profanityChart").getContext("2d");
+        new Chart(ctx, {
+          type: "pie",
+          data: {
+            labels: ["High", "Moderate", "Mild", "Non-Profane"],
+            datasets: [
+              {
+                data: [
+                  severityCounts["High"],
+                  severityCounts["Moderate"],
+                  severityCounts["Mild"],
+                  severityCounts["Non-Profane"],
+                ],
+                backgroundColor: ["#ef4444", "#facc15", "#06b6d4", "#22c55e"],
+                borderWidth: 0, // No border
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                position: "bottom",
+              },
+              datalabels: {
+                color: "white",
+                font: {
+                  weight: "bold",
+                },
+                formatter: (value, context) => {
+                  let percentage = ((value / totalComments) * 100).toFixed(1);
+                  return value > 0 ? `${percentage}%` : "";
+                },
+              },
+            },
+          },
+          plugins: [ChartDataLabels],
+        });
+      });
+    </script>
+    <script>
+      document.addEventListener("DOMContentLoaded", function () {
+        const severityFilter = document.getElementById("severityFilter");
+        const commentRows = document.querySelectorAll(".comment-row");
+
+        severityFilter.addEventListener("change", function () {
+          let selectedSeverity = severityFilter.value;
+
+          commentRows.forEach((row) => {
+            let severity = row.getAttribute("data-severity");
+
+            if (selectedSeverity === "All" || severity === selectedSeverity) {
+              row.style.display = "table-row";
+            } else {
+              row.style.display = "none";
+            }
+          });
+        });
+
+        document.querySelectorAll(".report-btn").forEach((button) => {
+          button.addEventListener("click", function () {
+            let comment = this.getAttribute("data-comment");
+            Swal.fire(
+              "Reported!",
+              `The comment: "${comment}" has been reported.`,
+              "success"
+            );
+          });
+        });
+      });
     </script>
   </body>
 </html>
