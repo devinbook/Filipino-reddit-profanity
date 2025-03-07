@@ -1,35 +1,28 @@
-from flask import Flask, render_template, request
+from flask import Flask, render_template, request, jsonify
 from reddit_api import fetch_reddit_comments
 from profanity_model import analyze_severity
+import io
 
 app = Flask(__name__)
 
 # Function to map severity to row color
 def get_row_color(severity):
-    if severity == "High":
-        return "bg-red-200"  # High severity -> red
-    elif severity == "Moderate":
-        return "bg-yellow-200"  # Moderate severity -> yellow
-    elif severity == "Mild":
-        return "bg-cyan-200"  # Mild severity -> cyan
-    elif severity == "Non-Profane":
-        return "bg-green-200"  # Non-profane -> green
-    else:
-        return "bg-white"  # Default color (if something goes wrong)
+    return {
+        "High": "bg-red-200",
+        "Moderate": "bg-yellow-200",
+        "Mild": "bg-cyan-200",
+        "Non-Profane": "bg-green-200"
+    }.get(severity, "bg-white")
 
 # Function to map severity to insights
 def get_insight(severity):
-    if severity == "High":
-        return "Immediate reporting or flagging is recommended due to the highly offensive nature of the content." 
-    elif severity == "Moderate":
-        return "Monitor the comment and consider issuing a warning or reminder about community guidelines."
-    elif severity == "Mild":
-        return "The content is slightly offensive."
-    elif severity == "Non-Profane":
-        return "The comment does not contain profanity."
-    else:
-        return "No recommendation available."
-    
+    return {
+        "High": "Immediate reporting is recommended due to the highly offensive nature of the content.",
+        "Moderate": "Monitor the comment and consider issuing a warning.",
+        "Mild": "The content is slightly offensive.",
+        "Non-Profane": "The comment does not contain profanity."
+    }.get(severity, "No recommendation available.")
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -44,17 +37,12 @@ def results():
 
     analyzed_comments = analyze_severity(post_data["comments"])
 
-    # Add the row color and insight for each analyzed comment
     for comment in analyzed_comments:
         severity = comment['severity']
         comment['row_color'] = get_row_color(severity)
         comment['insight'] = get_insight(severity)
 
-    # Pass the post details + analyzed comments to the template
     return render_template('results.html', post=post_data, comments=analyzed_comments)
-
 
 if __name__ == '__main__':
     app.run(debug=True)
-
-
