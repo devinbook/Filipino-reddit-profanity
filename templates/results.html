@@ -6,6 +6,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   </head>
   <body class="bg-gray-100">
     <!-- Navigation Bar -->
@@ -23,37 +24,71 @@
     </nav>
 
     <!-- Main Content Section -->
-    <div class="container mx-auto mt-8 flex gap-6">
-      <!-- Post Details -->
-      <div class="flex-1 bg-white p-5 rounded-lg shadow-lg">
+    <div class="container mx-auto mt-8">
+      <div
+        class="bg-white border border-gray-300 p-4 rounded-lg shadow-lg mb-8"
+      >
         <h2 class="text-3xl font-bold">{{ post.title }}</h2>
         <p class="text-gray-700 mt-2">{{ post.content }}</p>
         <a href="{{ post.url }}" class="text-blue-500 mt-4 block"
           >View on Reddit</a
         >
-      </div>
-
-      <!-- Profanity Graph Section -->
-      <div class="bg-white p-5 rounded-lg shadow-lg w-80">
-        <h2 class="text-lg font-bold mb-2">Profanity Severity</h2>
-        <div class="w-64 h-64">
-          <canvas id="profanityChart"></canvas>
+        <div class="mt-4 text-left">
+          <p class="text-gray-700 font-semibold">
+            📌 Total Comments:
+            <span class="font-bold">{{ total_comments }}</span>
+          </p>
+          <p class="text-red-500 font-semibold">
+            ⚠️ Comments with Profanity:
+            <span class="font-bold">{{ profane_comment_count }}</span>
+          </p>
         </div>
       </div>
     </div>
 
-    <!-- Severity Filter -->
-    <div class="container mx-auto mt-6 flex items-center">
-      <label for="severityFilter" class="mr-2 font-bold"
-        >Filter by Severity:</label
+    <!-- Profanity Graph, Profane Word Cloud & Non-Profane Word Cloud in One Row -->
+    <div class="container mx-auto mt-8 grid grid-cols-3 gap-6">
+      <!-- Profanity Graph & Stats Box -->
+      <div
+        class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
       >
-      <select id="severityFilter" class="p-2 border rounded">
-        <option value="All">All</option>
-        <option value="High">High</option>
-        <option value="Moderate">Moderate</option>
-        <option value="Mild">Mild</option>
-        <option value="Non-Profane">Non-Profane</option>
-      </select>
+        <h2 class="text-lg font-bold mb-2">Profanity Severity</h2>
+        <div class="w-56 h-56 mx-auto">
+          <canvas id="profanityChart"></canvas>
+        </div>
+      </div>
+
+      <!-- Profane Word Cloud Box -->
+      <div
+        class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
+      >
+        <h2 class="text-lg font-bold mb-2">Profane Word Cloud</h2>
+        {% if profane_wordcloud_img %}
+        <img
+          src="{{ profane_wordcloud_img }}"
+          alt="Profane Word Cloud"
+          class="w-56 h-56 border border-gray-300 shadow-md mx-auto"
+        />
+        {% else %}
+        <p class="text-gray-500">No profane words detected.</p>
+        {% endif %}
+      </div>
+
+      <!-- Non-Profane Word Cloud Box -->
+      <div
+        class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
+      >
+        <h2 class="text-lg font-bold mb-2">Non-Profane Word Cloud</h2>
+        {% if non_profane_wordcloud_img %}
+        <img
+          src="{{ non_profane_wordcloud_img }}"
+          alt="Non-Profane Word Cloud"
+          class="w-56 h-56 border border-gray-300 shadow-md mx-auto"
+        />
+        {% else %}
+        <p class="text-gray-500">No non-profane words detected.</p>
+        {% endif %}
+      </div>
     </div>
 
     <!-- Comments Table -->
@@ -75,10 +110,12 @@
             data-severity="{{ comment.severity }}"
           >
             <td class="border border-black px-4 py-2">{{ comment.text }}</td>
-            <td class="border border-black px-4 py-2">
+            <td class="border border-black px-4 py-2 font-bold">
               {{ comment.severity }}
             </td>
-            <td class="border border-black px-4 py-2">{{ comment.insight }}</td>
+            <td class="border border-black px-4 py-2 italic text-gray-700">
+              {{ comment.insight }}
+            </td>
             <td class="border border-black px-4 py-2 text-center">
               <button
                 class="report-btn bg-red-500 text-white px-2 py-1 rounded"
@@ -91,102 +128,89 @@
           {% endfor %}
         </tbody>
       </table>
+      <div class="flex justify-center mt-4">
+        <button
+          id="resetFilter"
+          class="bg-gray-500 text-white px-4 py-2 rounded"
+        >
+          Reset Filter
+        </button>
+      </div>
     </div>
-
-    <!-- Include the Data Labels Plugin -->
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
 
     <script>
       document.addEventListener("DOMContentLoaded", function () {
-        let severityCounts = {
-          High: 0,
-          Moderate: 0,
-          Mild: 0,
-          "Non-Profane": 0,
-        };
+        let severityCounts = { High: 0, Moderate: 0, Mild: 0 };
+        let totalComments = 0;
 
         document.querySelectorAll(".comment-row").forEach((row) => {
           let severity = row.getAttribute("data-severity");
           if (severityCounts.hasOwnProperty(severity)) {
             severityCounts[severity]++;
+            totalComments++;
           }
         });
 
-        let totalComments = Object.values(severityCounts).reduce(
-          (a, b) => a + b,
-          0
-        );
-
         let ctx = document.getElementById("profanityChart").getContext("2d");
-        new Chart(ctx, {
-          type: "pie",
-          data: {
-            labels: ["High", "Moderate", "Mild", "Non-Profane"],
-            datasets: [
-              {
-                data: [
-                  severityCounts["High"],
-                  severityCounts["Moderate"],
-                  severityCounts["Mild"],
-                  severityCounts["Non-Profane"],
-                ],
-                backgroundColor: ["#ef4444", "#facc15", "#06b6d4", "#22c55e"],
-                borderWidth: 0, // No border
-              },
-            ],
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: {
-                position: "bottom",
-              },
-              datalabels: {
-                color: "white",
-                font: {
-                  weight: "bold",
+
+        if (ctx) {
+          let chart = new Chart(ctx, {
+            type: "pie",
+            data: {
+              labels: ["High", "Moderate", "Mild"],
+              datasets: [
+                {
+                  data: [
+                    severityCounts["High"],
+                    severityCounts["Moderate"],
+                    severityCounts["Mild"],
+                  ],
+                  backgroundColor: ["#ef4444", "#facc15", "#06b6d4"],
+                  borderWidth: 1,
                 },
-                formatter: (value, context) => {
-                  let percentage = ((value / totalComments) * 100).toFixed(1);
-                  return value > 0 ? `${percentage}%` : "";
+              ],
+            },
+            options: {
+              responsive: true,
+              maintainAspectRatio: false, // 🔥 Prevents stretching
+              plugins: {
+                legend: { position: "bottom" },
+                datalabels: {
+                  color: "white",
+                  font: { weight: "bold", size: 14 },
+                  formatter: (value, context) => {
+                    let percentage = ((value / totalComments) * 100).toFixed(1);
+                    return `${percentage}%`;
+                  },
                 },
+              },
+              onClick: function (event, elements) {
+                if (elements.length > 0) {
+                  let index = elements[0].index;
+                  let selectedSeverity = chart.data.labels[index];
+                  filterTable(selectedSeverity);
+                }
               },
             },
-          },
-          plugins: [ChartDataLabels],
-        });
-      });
-    </script>
-    <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        const severityFilter = document.getElementById("severityFilter");
-        const commentRows = document.querySelectorAll(".comment-row");
+            plugins: [ChartDataLabels],
+          });
+        }
 
-        severityFilter.addEventListener("change", function () {
-          let selectedSeverity = severityFilter.value;
-
+        function filterTable(selectedSeverity) {
+          let commentRows = document.querySelectorAll(".comment-row");
           commentRows.forEach((row) => {
             let severity = row.getAttribute("data-severity");
-
-            if (selectedSeverity === "All" || severity === selectedSeverity) {
-              row.style.display = "table-row";
-            } else {
-              row.style.display = "none";
-            }
+            row.style.display =
+              severity === selectedSeverity ? "table-row" : "none";
           });
-        });
+        }
 
-        document.querySelectorAll(".report-btn").forEach((button) => {
-          button.addEventListener("click", function () {
-            let comment = this.getAttribute("data-comment");
-            Swal.fire(
-              "Reported!",
-              `The comment: "${comment}" has been reported.`,
-              "success"
-            );
+        document
+          .getElementById("resetFilter")
+          .addEventListener("click", function () {
+            let commentRows = document.querySelectorAll(".comment-row");
+            commentRows.forEach((row) => (row.style.display = "table-row"));
           });
-        });
       });
     </script>
   </body>
