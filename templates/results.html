@@ -8,6 +8,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
   </head>
+
   <body class="bg-gray-100">
     <!-- Navigation Bar -->
     <nav class="p-5 bg-white shadow">
@@ -46,9 +47,9 @@
       </div>
     </div>
 
-    <!-- Profanity Graph, Profane Word Cloud & Non-Profane Word Cloud in One Row -->
+    <!-- Profanity Graph, Profane Word Cloud & Non-Profane Word Cloud -->
     <div class="container mx-auto mt-8 grid grid-cols-3 gap-6">
-      <!-- Profanity Graph & Stats Box -->
+      <!-- Profanity Graph -->
       <div
         class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
       >
@@ -58,7 +59,7 @@
         </div>
       </div>
 
-      <!-- Profane Word Cloud Box -->
+      <!-- Profane Word Cloud -->
       <div
         class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
       >
@@ -74,7 +75,7 @@
         {% endif %}
       </div>
 
-      <!-- Non-Profane Word Cloud Box -->
+      <!-- Non-Profane Word Cloud -->
       <div
         class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
       >
@@ -99,6 +100,7 @@
           <tr class="border border-black">
             <th class="border border-black px-4 py-2">Comment</th>
             <th class="border border-black px-4 py-2">Severity</th>
+            <th class="border border-black px-4 py-2">Sentiment Type</th>
             <th class="border border-black px-4 py-2">Insights</th>
             <th class="border border-black px-4 py-2">Action</th>
           </tr>
@@ -112,6 +114,9 @@
             <td class="border border-black px-4 py-2">{{ comment.text }}</td>
             <td class="border border-black px-4 py-2 font-bold">
               {{ comment.severity }}
+            </td>
+            <td class="border border-black px-4 py-2 font-bold">
+              {{ comment.sentiment }}
             </td>
             <td class="border border-black px-4 py-2 italic text-gray-700">
               {{ comment.insight }}
@@ -138,6 +143,7 @@
       </div>
     </div>
 
+    <!-- Profanity Chart Script -->
     <script>
       document.addEventListener("DOMContentLoaded", function () {
         let severityCounts = { High: 0, Moderate: 0, Mild: 0 };
@@ -172,13 +178,13 @@
             },
             options: {
               responsive: true,
-              maintainAspectRatio: false, // 🔥 Prevents stretching
+              maintainAspectRatio: false,
               plugins: {
                 legend: { position: "bottom" },
                 datalabels: {
                   color: "white",
                   font: { weight: "bold", size: 14 },
-                  formatter: (value, context) => {
+                  formatter: (value) => {
                     let percentage = ((value / totalComments) * 100).toFixed(1);
                     return `${percentage}%`;
                   },
@@ -205,12 +211,11 @@
           });
         }
 
-        document
-          .getElementById("resetFilter")
-          .addEventListener("click", function () {
-            let commentRows = document.querySelectorAll(".comment-row");
-            commentRows.forEach((row) => (row.style.display = "table-row"));
-          });
+        document.getElementById("resetFilter").addEventListener("click", () => {
+          document
+            .querySelectorAll(".comment-row")
+            .forEach((row) => (row.style.display = "table-row"));
+        });
       });
     </script>
   </body>
