@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profanity Detection Results</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -25,16 +26,21 @@
     </nav>
 
     <!-- Main Content Section -->
-    <div class="container mx-auto mt-8">
+    <div class="container mx-auto mt-8 p-4">
+      <!-- Reddit Post Info -->
       <div
-        class="bg-white border border-gray-300 p-4 rounded-lg shadow-lg mb-8"
+        class="bg-white border border-gray-300 p-6 rounded-lg shadow-lg mb-8"
       >
         <h2 class="text-3xl font-bold">{{ post.title }}</h2>
         <p class="text-gray-700 mt-2">{{ post.content }}</p>
-        <a href="{{ post.url }}" class="text-blue-500 mt-4 block"
+        <a
+          href="{{ post.url }}"
+          class="text-blue-500 mt-4 block"
+          target="_blank"
+          rel="noopener noreferrer"
           >View on Reddit</a
         >
-        <div class="mt-4 text-left">
+        <div class="mt-4">
           <p class="text-gray-700 font-semibold">
             📌 Total Comments:
             <span class="font-bold">{{ total_comments }}</span>
@@ -45,133 +51,123 @@
           </p>
         </div>
       </div>
-    </div>
 
-    <!-- Profanity Graph, Profane Word Cloud & Non-Profane Word Cloud -->
-    <div class="container mx-auto mt-8 grid grid-cols-3 gap-6">
-      <!-- Profanity Graph -->
-      <div
-        class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
-      >
-        <h2 class="text-lg font-bold mb-2">Profanity Severity</h2>
-        <div class="w-56 h-56 mx-auto">
-          <canvas id="profanityChart"></canvas>
+      <!-- Profanity Graph & Word Cloud -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <!-- Profanity Graph -->
+        <div
+          class="bg-white p-5 rounded-lg shadow-lg border border-gray-300 text-center"
+        >
+          <h2 class="text-lg font-bold mb-4">Profanity Severity</h2>
+          <div class="w-64 h-64 mx-auto">
+            <canvas id="profanityChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Word Cloud -->
+        <div
+          class="bg-white p-5 rounded-lg shadow-lg border border-gray-300 text-center"
+        >
+          <h2 class="text-lg font-bold mb-4">Profane Word Cloud</h2>
+          {% if profane_wordcloud_img %}
+          <img
+            src="{{ profane_wordcloud_img }}"
+            alt="Profane Word Cloud"
+            class="mx-auto rounded-lg max-w-full"
+          />
+          {% else %}
+          <p>No profane words detected.</p>
+          {% endif %}
         </div>
       </div>
 
-      <!-- Profane Word Cloud -->
-      <div
-        class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
-      >
-        <h2 class="text-lg font-bold mb-2">Profane Word Cloud</h2>
-        {% if profane_wordcloud_img %}
-        <img
-          src="{{ profane_wordcloud_img }}"
-          alt="Profane Word Cloud"
-          class="w-56 h-56 border border-gray-300 shadow-md mx-auto"
-        />
-        {% else %}
-        <p class="text-gray-500">No profane words detected.</p>
-        {% endif %}
-      </div>
-
-      <!-- Non-Profane Word Cloud -->
-      <div
-        class="bg-white p-5 rounded-lg shadow-lg text-center border border-gray-300"
-      >
-        <h2 class="text-lg font-bold mb-2">Non-Profane Word Cloud</h2>
-        {% if non_profane_wordcloud_img %}
-        <img
-          src="{{ non_profane_wordcloud_img }}"
-          alt="Non-Profane Word Cloud"
-          class="w-56 h-56 border border-gray-300 shadow-md mx-auto"
-        />
-        {% else %}
-        <p class="text-gray-500">No non-profane words detected.</p>
-        {% endif %}
-      </div>
-    </div>
-
-    <!-- Comments Table -->
-    <div class="container mx-auto mt-6 overflow-x-auto">
-      <h2 class="text-2xl font-bold text-center">Detection Results</h2>
-      <table class="mt-4 mx-auto border-collapse w-full">
-        <thead>
-          <tr class="border border-black">
-            <th class="border border-black px-4 py-2">Comment</th>
-            <th class="border border-black px-4 py-2">Severity</th>
-            <th class="border border-black px-4 py-2">Sentiment Type</th>
-            <th class="border border-black px-4 py-2">Insights</th>
-            <th class="border border-black px-4 py-2">Action</th>
-          </tr>
-        </thead>
-        <tbody id="commentsTable">
-          {% for comment in comments %}
-          <tr
-            class="comment-row {{ comment.row_color }} border border-black"
-            data-severity="{{ comment.severity }}"
-          >
-            <td class="border border-black px-4 py-2">{{ comment.text }}</td>
-            <td class="border border-black px-4 py-2 font-bold">
-              {{ comment.severity }}
-            </td>
-            <td class="border border-black px-4 py-2 font-bold">
-              {{ comment.sentiment }}
-            </td>
-            <td class="border border-black px-4 py-2 italic text-gray-700">
-              {{ comment.insight }}
-            </td>
-            <td class="border border-black px-4 py-2 text-center">
-              <button
-                class="report-btn bg-red-500 text-white px-2 py-1 rounded"
-                data-comment="{{ comment.text }}"
-              >
-                Report
-              </button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      <div class="flex justify-center mt-4">
-        <button
-          id="resetFilter"
-          class="bg-gray-500 text-white px-4 py-2 rounded"
+      <!-- Comments Table -->
+      <div class="mt-8 overflow-x-auto">
+        <h2 class="text-2xl font-bold text-center mb-4">Detection Results</h2>
+        <table
+          class="min-w-full border-collapse border border-black text-sm md:text-base"
         >
-          Reset Filter
-        </button>
+          <thead>
+            <tr class="bg-gray-200">
+              <th class="border border-black px-4 py-2">Comment</th>
+              <th class="border border-black px-4 py-2">Severity</th>
+              <th class="border border-black px-4 py-2">Sentiment Score</th>
+              <th class="border border-black px-4 py-2">Magnitude Score</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for comment in comments %}
+            <tr
+              class="comment-row {{ comment.row_color }} border border-black"
+              data-severity="{{ comment.severity }}"
+            >
+              <td class="border border-black px-4 py-2 relative">
+                <!-- Hover Report Button -->
+                <button
+                  class="absolute right-0 top-0 mt-2 mr-2 bg-red-500 text-white py-1 px-3 rounded-full hover:bg-red-700 hidden report-btn"
+                  data-comment-id="{{ comment.id }}"
+                >
+                  Report
+                </button>
+                {{ comment.masked_text }}
+              </td>
+              <td class="border border-black px-4 py-2 text-center italic">
+                {{ comment.severity }}
+              </td>
+              <td class="border border-black px-4 py-2 text-center font-bold">
+                {{ comment.sentiment_score }}
+              </td>
+              <td class="border border-black px-4 py-2 text-center font-bold">
+                {{ comment.magnitude }}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+
+        <div class="flex justify-center mt-4">
+          <button
+            id="resetFilter"
+            class="bg-gray-500 text-white px-4 py-2 rounded"
+          >
+            Reset Filter
+          </button>
+        </div>
       </div>
     </div>
 
     <!-- Profanity Chart Script -->
     <script>
-      document.addEventListener("DOMContentLoaded", function () {
-        let severityCounts = { High: 0, Moderate: 0, Mild: 0 };
-        let totalComments = 0;
+      document.addEventListener("DOMContentLoaded", () => {
+        const severityCounts = { High: 0, Moderate: 0, Mild: 0 };
+        const rows = document.querySelectorAll(".comment-row");
 
-        document.querySelectorAll(".comment-row").forEach((row) => {
-          let severity = row.getAttribute("data-severity");
+        // Count the number of profane comments
+        let totalProfaneComments = 0;
+
+        rows.forEach((row) => {
+          const severity = row.getAttribute("data-severity");
           if (severityCounts.hasOwnProperty(severity)) {
             severityCounts[severity]++;
-            totalComments++;
+            totalProfaneComments++; // Count only profane comments
           }
         });
 
-        let ctx = document.getElementById("profanityChart").getContext("2d");
+        const ctx = document.getElementById("profanityChart").getContext("2d");
 
-        if (ctx) {
-          let chart = new Chart(ctx, {
+        if (totalProfaneComments > 0 && ctx) {
+          const chart = new Chart(ctx, {
             type: "pie",
             data: {
               labels: ["High", "Moderate", "Mild"],
               datasets: [
                 {
                   data: [
-                    severityCounts["High"],
-                    severityCounts["Moderate"],
-                    severityCounts["Mild"],
+                    severityCounts.High,
+                    severityCounts.Moderate,
+                    severityCounts.Mild,
                   ],
-                  backgroundColor: ["#ef4444", "#facc15", "#06b6d4"],
+                  backgroundColor: ["#ef4444", "#facc15", "#06b6d4"], // Colors for High, Moderate, Mild
                   borderWidth: 1,
                 },
               ],
@@ -184,16 +180,16 @@
                 datalabels: {
                   color: "white",
                   font: { weight: "bold", size: 14 },
-                  formatter: (value) => {
-                    let percentage = ((value / totalComments) * 100).toFixed(1);
-                    return `${percentage}%`;
-                  },
+                  formatter: (value) =>
+                    value
+                      ? `${((value / totalProfaneComments) * 100).toFixed(1)}%` // Exclude non-profane
+                      : "",
                 },
               },
-              onClick: function (event, elements) {
+              onClick: (event, elements) => {
                 if (elements.length > 0) {
-                  let index = elements[0].index;
-                  let selectedSeverity = chart.data.labels[index];
+                  const index = elements[0].index;
+                  const selectedSeverity = chart.data.labels[index];
                   filterTable(selectedSeverity);
                 }
               },
@@ -202,19 +198,45 @@
           });
         }
 
-        function filterTable(selectedSeverity) {
-          let commentRows = document.querySelectorAll(".comment-row");
-          commentRows.forEach((row) => {
-            let severity = row.getAttribute("data-severity");
+        function filterTable(severity) {
+          rows.forEach((row) => {
             row.style.display =
-              severity === selectedSeverity ? "table-row" : "none";
+              row.getAttribute("data-severity") === severity
+                ? "table-row"
+                : "none";
           });
         }
 
         document.getElementById("resetFilter").addEventListener("click", () => {
-          document
-            .querySelectorAll(".comment-row")
-            .forEach((row) => (row.style.display = "table-row"));
+          rows.forEach((row) => (row.style.display = "table-row"));
+        });
+
+        // Hover effect to show the report button
+        rows.forEach((row) => {
+          const commentText = row.querySelector("td");
+          const reportButton = row.querySelector(".report-btn");
+
+          commentText.addEventListener("mouseover", () => {
+            reportButton.classList.remove("hidden");
+          });
+
+          commentText.addEventListener("mouseout", () => {
+            reportButton.classList.add("hidden");
+          });
+        });
+
+        // Handle report button click
+        const reportButtons = document.querySelectorAll(".report-btn");
+        reportButtons.forEach((btn) => {
+          btn.addEventListener("click", (e) => {
+            const commentId = e.target.getAttribute("data-comment-id");
+            // Implement the reporting logic here (e.g., send a request to the server)
+            Swal.fire(
+              "Reported",
+              `Comment ID ${commentId} has been reported.`,
+              "success"
+            );
+          });
         });
       });
     </script>
