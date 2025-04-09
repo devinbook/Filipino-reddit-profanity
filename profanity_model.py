@@ -4,18 +4,12 @@ import re
 import os
 from transformers import BertTokenizer, BertForSequenceClassification
 from sentiment_analysis import get_sentiment_with_pos
-
+from aspect_detect import detect_aspect
 
 # Load Profanity Detection Model and Tokenizer
 profanity_model_path = r"C:\Users\Personal Computer\Desktop\profanity-detection-sentiment\Bert_model"
 profanity_tokenizer = BertTokenizer.from_pretrained(profanity_model_path)
 profanity_model = BertForSequenceClassification.from_pretrained(profanity_model_path)
-
-# Load Sentiment Analysis Model and Tokenizer
-SENTIMENT_MODEL_PATH = r"C:\Users\Personal Computer\Desktop\profanity-detection-sentiment\BERT_Tagalog_Sentiment"  # Ensure path correctness
-sentiment_tokenizer = BertTokenizer.from_pretrained(SENTIMENT_MODEL_PATH)
-sentiment_model = BertForSequenceClassification.from_pretrained(SENTIMENT_MODEL_PATH)
-sentiment_model.eval() 
 
 # Lists of Profane and Negative Words
 PROFANE_WORDS = [
@@ -59,29 +53,15 @@ def mask_word(word, severity):
     return word
 
 def mask_profanity(text, severity):
-    """Mask profane words in the text based on severity."""
+    """Mask profane and negative words in the text based on severity."""
     words = text.split()
     for i, word in enumerate(words):
-        word_cleaned = re.sub(r'[^\w\s]', '', word)  # Remove punctuation
-        if word_cleaned.lower() in PROFANE_WORDS:
+        word_cleaned = re.sub(r'[^\w\s]', '', word).lower()  # Clean the word to match with the profane list
+        if word_cleaned in [w.lower() for w in PROFANE_WORDS]:  # Process profane words
+            words[i] = mask_word(word_cleaned, severity)
+        elif word_cleaned in [w.lower() for w in NEGATIVE_WORDS]:  # Process negative words
             words[i] = mask_word(word_cleaned, severity)
     return " ".join(words)
-
-def analyze_sentiment(text):
-    """Predict sentiment using the trained sentiment model."""
-    if not text.strip():
-        return {"score": 0, "magnitude": 0}
-
-    inputs = sentiment_tokenizer(text, return_tensors="pt", padding=True, truncation=True, max_length=512)
-    
-    with torch.no_grad():
-        outputs = sentiment_model(**inputs)
-        scores = torch.nn.functional.softmax(outputs.logits, dim=-1)
-    
-    sentiment_score = scores[0][1].item() - scores[0][0].item()  # Assuming binary classification (Negative vs Positive)
-    magnitude = abs(sentiment_score)
-
-    return {"score": sentiment_score, "magnitude": magnitude}
 
 def classify_profanity(text):
     """Classify profanity severity using the profanity detection model."""
@@ -93,52 +73,69 @@ def classify_profanity(text):
 
     return severity_mapping.get(predicted_label, "Non-Profane")
 
+from collections import Counter
+
 def analyze_severity(comments):
-    """Analyze severity and sentiment for each comment, only displaying the masked text."""
+    if not isinstance(comments, list):
+        raise ValueError("❌ Invalid input: Expected a list of comment dictionaries.")
+
     analyzed_comments = []
-    profane_words = []
-    negative_words = []
-    non_profane_words = []
-    
+    wordcloud_tokens = []
+
+    specific_aspects = ["leni", "marcos"]  # You can add more here
+
     for comment in comments:
-        if not isinstance(comment, dict):  # Check if the comment is a dictionary
-            continue  # Skip this comment if it isn't a dictionary
+        if not isinstance(comment, dict):
+            continue
 
-        text = comment.get('text', '')  # Get the text of the comment
+        text = str(comment.get('text', '')).strip()
         if not text:
-            continue  # Skip if there's no text
+            continue
 
-        # Profanity classification
+        print(f"📝 Processing comment: {text}")
+
+        # 1. Profanity Classification
         severity = classify_profanity(text)
-        
-        # Sentiment Analysis
-        sentiment = get_sentiment_with_pos(text)
+        print(f"Profanity Severity: {severity}")
 
-        # Ensure sentiment dictionary has required keys
+        # 2. Sentiment Analysis
+        sentiment = get_sentiment_with_pos(text)
         sentiment_score = sentiment.get("Sentiment Score", 0)
         magnitude = sentiment.get("Magnitude", 0)
+        print(f"Sentiment Score: {sentiment_score}, Magnitude: {magnitude}")
 
-        # Mask the text for profanity
+        # 3. Aspect Detection
+        aspect = detect_aspect(text)
+        print(f"Detected Aspect: {aspect}")
+
+        # 4. Mask the Text for Profanity
         masked_text = mask_profanity(text, severity)
+        print(f"Masked Text: {masked_text}")
 
-        # Store results
+        # 5. Collect Profane and Negative Words Only
+        for word in text.split():
+            cleaned = re.sub(r'[^\w\s]', '', word).lower()
+            if cleaned in [w.lower() for w in PROFANE_WORDS + NEGATIVE_WORDS] and len(cleaned) > 2:
+                wordcloud_tokens.append(cleaned)
+
+        # 6. Add specific aspects like 'leni', 'marcos' if mentioned in text
+        text_lower = text.lower()
+        for aspect_term in specific_aspects:
+            if aspect_term in text_lower:
+                print(f"🔎 Found Specific Aspect: {aspect_term}")
+                wordcloud_tokens.append(aspect_term)
+
+        # Store the analyzed comment
         analyzed_comments.append({
-            'masked_text': masked_text,  # Only include the masked text
+            'masked_text': masked_text,
             'severity': severity,
-            "sentiment_score": sentiment_score,
-            "magnitude": magnitude
+            'aspect': aspect,
+            'sentiment_score': sentiment_score,
+            'magnitude': magnitude
         })
-        
-        # Categorize comments
-        if severity.lower() != "non-profane":
-            profane_words.append(text)
-        else:
-            non_profane_words.append(text)
-            
-        if sentiment_score < 0:
-            negative_words.append(text)
 
-    print("🔍 Analyzed Comments:", analyzed_comments)  # Debugging check
+    # Remove duplicates
+    wordcloud_tokens = list(set(wordcloud_tokens))
 
-    return analyzed_comments, profane_words, negative_words, non_profane_words
-
+    print("🌀 Final WordCloud Tokens:", wordcloud_tokens)
+    return analyzed_comments, wordcloud_tokens
