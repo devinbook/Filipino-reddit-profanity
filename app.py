@@ -55,9 +55,10 @@ def generate_slanted_word_cloud(words, filename):
 
     text = " ".join(words)
 
+    # Adjust width and height to your preferred dimensions (example: width=800, height=400)
     wordcloud = WordCloud(
-        width=1200,  # Match graph width
-        height=600,  # Match graph height
+        width=800,  # Set width to 800px
+        height=400,  # Set height to 400px
         mask=mask,
         background_color="white",
         contour_width=2,
@@ -67,7 +68,7 @@ def generate_slanted_word_cloud(words, filename):
         stopwords=stopwords,
         min_font_size=10,
         max_font_size=150,
-        prefer_horizontal=0.6,  # Adjust slant angle (0=vertical, 1=horizontal)
+        prefer_horizontal=1,  # Adjust slant angle (0=vertical, 1=horizontal)
         random_state=42,
         font_path=font_path
     ).generate(text)
@@ -92,7 +93,8 @@ def results():
         return "Error fetching Reddit post."
 
     # Analyze comment severity (from profanity_model.py)
-    analyzed_comments, profane_words, negative_words, non_profane_words = analyze_severity(post_data["comments"])
+    analyzed_comments, wordcloud_tokens = analyze_severity(post_data["comments"])
+
     for comment in analyzed_comments:
         comment["row_color"] = get_row_color(comment["severity"])
         
@@ -100,15 +102,8 @@ def results():
     total_comments = len(analyzed_comments)
     profane_comment_count = sum(1 for comment in analyzed_comments if comment["severity"] in ["High", "Moderate", "Mild"])
     
-    # Debugging output
-    print(f"Total Comments: {total_comments}")
-    print(f"Profane Comments: {profane_comment_count}")
-    
-    # Combine profane and negative words
-    all_profane_and_negative_words = profane_words + negative_words
+    profane_wordcloud_img = generate_slanted_word_cloud(wordcloud_tokens, "profane_wordcloud.png")
 
-    # Generate a custom slanted word cloud with adjusted size
-    profane_wordcloud_img = generate_slanted_word_cloud(all_profane_and_negative_words, "profane_wordcloud.png")
 
     return render_template(
         'results.html',
