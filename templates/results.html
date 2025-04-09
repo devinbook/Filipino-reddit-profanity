@@ -52,8 +52,8 @@
         </div>
       </div>
 
-      <!-- Profanity Graph & Word Cloud -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+      <!-- Charts Section -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
         <!-- Profanity Graph -->
         <div
           class="bg-white p-5 rounded-lg shadow-lg border border-gray-300 text-center"
@@ -61,6 +61,16 @@
           <h2 class="text-lg font-bold mb-4">Profanity Severity</h2>
           <div class="w-64 h-64 mx-auto">
             <canvas id="profanityChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Aspect Graph -->
+        <div
+          class="bg-white p-5 rounded-lg shadow-lg border border-gray-300 text-center"
+        >
+          <h2 class="text-lg font-bold mb-4">Aspect Graph</h2>
+          <div class="w-64 h-64 mx-auto">
+            <canvas id="aspectChart"></canvas>
           </div>
         </div>
 
@@ -100,9 +110,10 @@
             <tr
               class="comment-row {{ comment.row_color }} border border-black"
               data-severity="{{ comment.severity }}"
+              data-sentiment="{{ comment.sentiment_score }}"
+              data-aspect="{{ comment.aspect }}"
             >
               <td class="border border-black px-4 py-2 relative">
-                <!-- Hover Report Button -->
                 <button
                   class="absolute right-0 top-0 mt-2 mr-2 bg-red-500 text-white py-1 px-3 rounded-full hover:bg-red-700 hidden report-btn"
                   data-comment-id="{{ comment.id }}"
@@ -136,27 +147,46 @@
       </div>
     </div>
 
-    <!-- Profanity Chart Script -->
+    <!-- Scripts -->
     <script>
       document.addEventListener("DOMContentLoaded", () => {
-        const severityCounts = { High: 0, Moderate: 0, Mild: 0 };
         const rows = document.querySelectorAll(".comment-row");
-
-        // Count the number of profane comments
+        const severityCounts = { High: 0, Moderate: 0, Mild: 0 };
+        const sentimentBuckets = { Positive: 0, Neutral: 0, Negative: 0 };
+        const aspectCounts = {};
         let totalProfaneComments = 0;
 
         rows.forEach((row) => {
           const severity = row.getAttribute("data-severity");
+          const sentiment = parseFloat(row.getAttribute("data-sentiment"));
+          const aspect = row.getAttribute("data-aspect");
+
           if (severityCounts.hasOwnProperty(severity)) {
             severityCounts[severity]++;
-            totalProfaneComments++; // Count only profane comments
+            totalProfaneComments++;
+          }
+
+          if (!isNaN(sentiment)) {
+            if (sentiment >= 0.2) {
+              sentimentBuckets["Positive"]++;
+            } else if (sentiment <= -0.2) {
+              sentimentBuckets["Negative"]++;
+            } else {
+              sentimentBuckets["Neutral"]++;
+            }
+          }
+
+          if (aspect) {
+            aspectCounts[aspect] = (aspectCounts[aspect] || 0) + 1;
           }
         });
 
-        const ctx = document.getElementById("profanityChart").getContext("2d");
-
-        if (totalProfaneComments > 0 && ctx) {
-          const chart = new Chart(ctx, {
+        // Profanity Chart
+        const ctxSeverity = document
+          .getElementById("profanityChart")
+          .getContext("2d");
+        if (totalProfaneComments > 0 && ctxSeverity) {
+          new Chart(ctxSeverity, {
             type: "pie",
             data: {
               labels: ["High", "Moderate", "Mild"],
@@ -167,7 +197,7 @@
                     severityCounts.Moderate,
                     severityCounts.Mild,
                   ],
-                  backgroundColor: ["#ef4444", "#facc15", "#06b6d4"], // Colors for High, Moderate, Mild
+                  backgroundColor: ["#ef4444", "#facc15", "#06b6d4"],
                   borderWidth: 1,
                 },
               ],
@@ -182,15 +212,15 @@
                   font: { weight: "bold", size: 14 },
                   formatter: (value) =>
                     value
-                      ? `${((value / totalProfaneComments) * 100).toFixed(1)}%` // Exclude non-profane
+                      ? `${((value / totalProfaneComments) * 100).toFixed(1)}%`
                       : "",
                 },
               },
               onClick: (event, elements) => {
                 if (elements.length > 0) {
                   const index = elements[0].index;
-                  const selectedSeverity = chart.data.labels[index];
-                  filterTable(selectedSeverity);
+                  const selectedSeverity = ["High", "Moderate", "Mild"][index];
+                  filterTableBySeverity(selectedSeverity);
                 }
               },
             },
@@ -198,7 +228,58 @@
           });
         }
 
-        function filterTable(severity) {
+        // Aspect Chart
+        // Aspect Chart
+        const ctxAspect = document
+          .getElementById("aspectChart")
+          .getContext("2d");
+        const aspectChart = new Chart(ctxAspect, {
+          type: "bar",
+          data: {
+            labels: Object.keys(aspectCounts),
+            datasets: [
+              {
+                label: "Aspect Count",
+                data: Object.values(aspectCounts),
+                backgroundColor: [
+                  "#3b82f6",
+                  "#10b981",
+                  "#facc15",
+                  "#ef4444",
+                  "#8b5cf6",
+                  "#f97316",
+                  "#9ca3af",
+                ],
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              datalabels: {
+                anchor: "end",
+                align: "top",
+                font: { weight: "bold" },
+                formatter: (value) => value,
+              },
+            },
+            scales: {
+              y: { beginAtZero: true, ticks: { stepSize: 1 } },
+            },
+            onClick: (event, elements) => {
+              if (elements.length > 0) {
+                const index = elements[0].index;
+                const selectedAspect = aspectChart.data.labels[index];
+                filterTableByAspect(selectedAspect);
+              }
+            },
+          },
+          plugins: [ChartDataLabels],
+        });
+
+        function filterTableBySeverity(severity) {
           rows.forEach((row) => {
             row.style.display =
               row.getAttribute("data-severity") === severity
@@ -207,36 +288,17 @@
           });
         }
 
+        // Function to filter table rows based on the selected aspect
+        function filterTableByAspect(aspect) {
+          rows.forEach((row) => {
+            const rowAspect = row.getAttribute("data-aspect");
+            row.style.display = rowAspect === aspect ? "" : "none"; // Hide rows not matching the selected aspect
+          });
+        }
+
+        // Reset Filters
         document.getElementById("resetFilter").addEventListener("click", () => {
-          rows.forEach((row) => (row.style.display = "table-row"));
-        });
-
-        // Hover effect to show the report button
-        rows.forEach((row) => {
-          const commentText = row.querySelector("td");
-          const reportButton = row.querySelector(".report-btn");
-
-          commentText.addEventListener("mouseover", () => {
-            reportButton.classList.remove("hidden");
-          });
-
-          commentText.addEventListener("mouseout", () => {
-            reportButton.classList.add("hidden");
-          });
-        });
-
-        // Handle report button click
-        const reportButtons = document.querySelectorAll(".report-btn");
-        reportButtons.forEach((btn) => {
-          btn.addEventListener("click", (e) => {
-            const commentId = e.target.getAttribute("data-comment-id");
-            // Implement the reporting logic here (e.g., send a request to the server)
-            Swal.fire(
-              "Reported",
-              `Comment ID ${commentId} has been reported.`,
-              "success"
-            );
-          });
+          rows.forEach((row) => (row.style.display = ""));
         });
       });
     </script>
