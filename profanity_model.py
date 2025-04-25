@@ -82,8 +82,6 @@ def analyze_severity(comments):
     analyzed_comments = []
     wordcloud_tokens = []
 
-    specific_aspects = ["leni", "marcos"]  # You can add more here
-
     for comment in comments:
         if not isinstance(comment, dict):
             continue
@@ -117,13 +115,6 @@ def analyze_severity(comments):
             cleaned = re.sub(r'[^\w\s]', '', word).lower()
             if cleaned in [w.lower() for w in PROFANE_WORDS + NEGATIVE_WORDS] and len(cleaned) > 2:
                 wordcloud_tokens.append(cleaned)
-
-        # 6. Add specific aspects like 'leni', 'marcos' if mentioned in text
-        text_lower = text.lower()
-        for aspect_term in specific_aspects:
-            if aspect_term in text_lower:
-                print(f"🔎 Found Specific Aspect: {aspect_term}")
-                wordcloud_tokens.append(aspect_term)
 
         # Store the analyzed comment
         analyzed_comments.append({
