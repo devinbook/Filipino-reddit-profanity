@@ -1,6 +1,6 @@
 # 🚨 Profanity Detection in Filipino Social Media Comments Using Transformer-Based NLP Models
 
-This project is part of my undergraduate thesis at **New Era University**, aiming to detect and classify profanity in Filipino (Tagalog) social media comments using transformer-based models like **BERT**, **XLNet**, and **ELECTRA**.
+This project is part of my undergraduate thesis, aiming to detect and classify profanity in Filipino (Tagalog) social media comments using transformer-based models like **BERT**, **XLNet**, and **ELECTRA**.
 
 ---
 
